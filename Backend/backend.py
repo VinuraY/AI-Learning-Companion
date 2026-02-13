@@ -22,16 +22,13 @@ load_dotenv()
 
 PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 SECRET_KEY = os.getenv('SECRET_KEY')
 INDEX_NAME = 'ai-learning-companion'
 
 app = fastapi.FastAPI()
 
 # Whitelist of allowed origins.
-origins = [
-    'http://localhost:3000',
-    'http://localhost:5173']
+origins = ['<ip_address:port>']
 
 app.add_middleware(
     CORSMiddleware,
