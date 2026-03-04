@@ -90,10 +90,10 @@ def _get_current_day() -> int:
 
 try:
     _tokenizer = tiktoken.get_encoding("cl100k_base")
-    logger.info("✅ Tokenizer loaded successfully")
+    logger.info("[+] Tokenizer loaded successfully.")
 except Exception as e:
     _tokenizer = None
-    logger.warning(f"⚠️ Tokenizer failed: {e}. Using fallback.")
+    logger.warning(f"[!] Tokenizer failed: {e}. Using fallback.")
 
 
 @lru_cache(maxsize=1000)
@@ -253,7 +253,7 @@ def _consume_capacity(model_name: str, estimated_tokens: int):
         )
     
     except redis.RedisError as e:
-        logger.error(f"Redis write error: {e}. Continuing anyway.")
+        logger.error(f"[! ]Redis write error: {e}. Continuing anyway.")
 
 
 def _is_model_available(model_name: str, estimated_tokens: int) -> bool:
@@ -412,7 +412,7 @@ def get_best_model(
     route_result = _semantic_router(request)
     route_name = route_result.name if route_result else 'fast'
     
-    logger.info(f"📍 Route: '{route_name}' | Tokens: {estimated_tokens}")
+    logger.info(f"[*] Route: '{route_name}' | Tokens: {estimated_tokens}...")
     
     # Try pools in failsafe order
     chain = FAILSAFE_CHAIN.get(route_name, ['fast', 'complex', 'reasoning'])
@@ -429,12 +429,12 @@ def get_best_model(
             config = GROQ_MODELS[selected]
             if pool_name != route_name:
                 logger.warning(
-                    f"⚠️ Failsafe: '{route_name}' → '{pool_name}' | "
+                    f"[!] Failsafe: '{route_name}' → '{pool_name}' | "
                     f"Selected: {selected} ({config['params']}, Q{config['quality']})"
                 )
             else:
                 logger.info(
-                    f"✅ Selected: {selected} ({config['params']}, Q{config['quality']}) | "
+                    f"[+] Selected: {selected} ({config['params']}, Q{config['quality']}) | "
                     f"Capacity: {_capacity_score(selected, estimated_tokens):.2f} | "
                     f"Pool: {pool_name}"
                 )
@@ -442,7 +442,7 @@ def get_best_model(
             return selected
     
     # All models exhausted
-    logger.error('❌ All models at capacity')
+    logger.error('[!] All models at capacity.')
     raise HTTPException(
         status_code=503,
         detail='All AI models at capacity. Please wait 60 seconds and try again.'
@@ -459,10 +459,10 @@ def guard_rail_model(request: str) -> str:
         )
         result = response.choices[0].message.content.strip().lower()
         verdict = 'safe' if result.startswith('safe') else 'unsafe'
-        logger.info(f"🛡️ Guard rail: '{verdict}'")
+        logger.info(f"[*] Guard rail: '{verdict}'")
         return verdict
     except Exception as e:
-        logger.error(f"Guard rail failed: {e}")
+        logger.error(f"[!] Guard rail failed: {e}.")
         return 'safe'
 
 
@@ -527,9 +527,9 @@ def clear_token_cache():
         keys = r.keys("token_cache:*")
         if keys:
             r.delete(*keys)
-            logger.info(f"Cleared {len(keys)} token cache entries")
+            logger.info(f"[+] Cleared {len(keys)} token cache entries.")
     except redis.RedisError as e:
-        logger.error(f"Failed to clear cache: {e}")
+        logger.error(f"[!] Failed to clear cache: {e}.")
 
 
 def health_check() -> Dict:
@@ -569,15 +569,15 @@ def initialize():
     try:
         r = _get_redis_client()
         r.ping()
-        logger.info("✅ Redis connected")
+        logger.info("[+] Redis connected.")
     except redis.RedisError as e:
-        logger.error(f"❌ Redis connection failed: {e}")
-        logger.warning("⚠️ Load balancer will work but state won't persist")
+        logger.error(f"[!] Redis connection failed: {e}.")
+        logger.warning("[!] Load balancer will work but state won't persist.")
     
     # Test tokenizer
     if _tokenizer:
-        logger.info("✅ Tokenizer ready")
+        logger.info("[+] Tokenizer ready.")
     else:
-        logger.warning("⚠️ Using fallback token counting")
+        logger.warning("[!] Using fallback token counting.")
     
-    logger.info(f"✅ Load balancer initialized ({len(GROQ_MODELS)} models)")
+    logger.info(f"[+] Load balancer initialized ({len(GROQ_MODELS)} models).")
