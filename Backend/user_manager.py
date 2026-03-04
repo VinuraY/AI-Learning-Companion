@@ -1,10 +1,14 @@
 from dotenv import load_dotenv
 import os
+import logging
 import fastapi
 import jwt
 import datetime
 import time
 from llama_index.core.memory import ChatMemoryBuffer
+
+# Configure logging.
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file.
 load_dotenv()
@@ -22,6 +26,7 @@ def get_user_memory(user_id):
     if user_id not in user_memory:
         user_memory[user_id] = ChatMemoryBuffer.from_defaults(token_limit=3000)
     
+    logging.info(f'[+] User memory retrieved.')
     return user_memory[user_id]
 
 # Generate JWT token for authenticated users.
@@ -29,12 +34,12 @@ def generate_token(user_id, role='student'):
 
     ACCESS_TOKEN_EXPIRE_HOURS = 24
 
-    expire = datetime.datetime.utcnow() + datetime.timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
 
     payload = {
         'subject': user_id,
         'role': role,
-        'expire': expire
+        'exp': int(expire.timestamp())
     }
 
     token = jwt.encode(payload, SECRET_KEY, algorithm="HS256") # type: ignore
@@ -54,6 +59,8 @@ def check_user_limit(user_id):
         user_id, []) if current_time - t < 60]
 
     if len(user_usage[user_id]) >= 10:
+
+        logging.error('[!] User rate limit hit.')
         raise fastapi.HTTPException(
             status_code=429, detail='Hitting rate limit! Max 10 requests per minute.')
 
